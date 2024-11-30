@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "ISUCON pprotein Deploy"
+Parameters:
+  GitHubUsername:
+    Description: "GitHub Username for SSH public key"
+    Type: String
+    Default: "ue-sho,"
+  VpcId:
+    Description: "AWS EC2 VPC ID"
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Description: "AWS EC2 Subnet ID"
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+# ------------------------------------------------------------#
+#  Instance
+# ------------------------------------------------------------#
+# Security Group
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Security Group for ISUCON13 Final pprotein
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: "443"
+          ToPort: "443"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: udp
+          FromPort: "53"
+          ToPort: "53"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: -1
+          CidrIp: "192.168.0.0/24"
+        - IpProtocol: tcp
+          FromPort: 9000
+          ToPort: 9000
+          CidrIp: 0.0.0.0/0
+
+# ENI Create
+  PproteinENI:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SourceDestCheck: 'false'
+      GroupSet:
+      - !Ref SecurityGroup
+      SubnetId: !Ref SubnetId
+      Tags:
+      - Key: Name
+        Value: isu-eni-pprotein
+
+# EC2 Instance Create
+  PproteinInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b20f552f63953f0e  # ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20240927
+      InstanceType: c5.large
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 40
+            VolumeType: gp3
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref PproteinENI
+        DeviceIndex: "0"
+      Tags:
+      - Key: Name
+        Value: isu-measure
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+
+          # ユーザー作成
+          useradd -m -s /bin/bash isucon
+
+          # ssh設定
+          GITHUB_USER=${GitHubUsername}
+          mkdir -p /home/isucon/.ssh
+          curl -s https://github.com/$GITHUB_USER.keys >> /home/isucon/.ssh/authorized_keys
+          chown -R isucon:isucon /home/isucon/.ssh
+          chmod 600 /home/isucon/.ssh/authorized_keys
+
+          # dockerインストール
+          curl -fsSL https://get.docker.com | sh
+          curl -L https://github.com/docker/compose/releases/download/v2.29.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          usermod -aG docker isucon
+
+          # pprotein設定
+          git clone https://github.com/kaz/pprotein.git /home/isucon/pprotein
+          chown -R isucon:isucon /home/isucon/pprotein
+
+          # compose build & up
+          docker-compose -f /home/isucon/pprotein/compose.yaml up -d --build
+
+# EIP Create
+  PproteinInstanceIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref PproteinInstance
+
+# ------------------------------------------------------------#
+#  Outputs
+# ------------------------------------------------------------#
+Outputs:
+  # EIP
+  PproteinInstancePublicIP:
+    Value: !GetAtt PproteinInstance.PublicIp
+    Description: Public IP of EC2 instance
