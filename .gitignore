@@ -10,7 +10,7 @@ tmp/
 
 backup/
 local/
-go/
+/go/
 logs/
 
 webapp/sqlite-trace.log
