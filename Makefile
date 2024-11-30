@@ -146,7 +146,7 @@ get-db-conf:
 get-nginx-conf:
 	mkdir -p /home/isucon/$(SERVER_ID)/etc/nginx
 	mkdir -p /home/isucon/backup/etc
-	cp -r /etc/nginx /home/isucon/backup/etc
+	sudo cp -r /etc/nginx /home/isucon/backup/etc
 	sudo cp -R $(NGINX_PATH)/* ~/$(SERVER_ID)/etc/nginx
 	sudo chown $(USER) -R ~/$(SERVER_ID)/etc/nginx
 
