@@ -1,10 +1,18 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "ISUCON pprotein Deploy"
 Parameters:
-  GitHubUsername:
+  GitHubUser1:
     Description: "GitHub Username for SSH public key"
     Type: String
-    Default: "ue-sho,"
+    Default: "ue-sho"
+  GitHubUser2:
+    Description: "GitHub Username for SSH public key"
+    Type: String
+    Default: "kakudenbuzo"
+  GitHubUser3:
+    Description: "GitHub Username for SSH public key"
+    Type: String
+    Default: "imajoriri"
   VpcId:
     Description: "AWS EC2 VPC ID"
     Type: AWS::EC2::VPC::Id
@@ -79,9 +87,13 @@ Resources:
           useradd -m -s /bin/bash isucon
 
           # ssh設定
-          GITHUB_USER=${GitHubUsername}
+          GITHUB_USER1=${GitHubUser1}
+          GITHUB_USER2=${GitHubUser2}
+          GITHUB_USER3=${GitHubUser3}
           mkdir -p /home/isucon/.ssh
-          curl -s https://github.com/$GITHUB_USER.keys >> /home/isucon/.ssh/authorized_keys
+          curl -s https://github.com/$GITHUB_USER1.keys >> /home/isucon/.ssh/authorized_keys
+          curl -s https://github.com/$GITHUB_USER2.keys >> /home/isucon/.ssh/authorized_keys
+          curl -s https://github.com/$GITHUB_USER3.keys >> /home/isucon/.ssh/authorized_keys
           chown -R isucon:isucon /home/isucon/.ssh
           chmod 600 /home/isucon/.ssh/authorized_keys
 
